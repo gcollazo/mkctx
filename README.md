@@ -1,6 +1,88 @@
 # mkctx - Context Generator for LLMs
 
-`mkctx` is a command-line tool that generates structured context from source code repositories for use with large language models (LLMs) like Claude. It allows you to extract code and visualize the directory structure in a format that's optimized for AI context windows.
+`mkctx` is a command-line tool that generates structured context from source code repositories for use with large language models (LLMs) like Claude. It extracts code and visualizes the directory structure in a format optimized for AI context windows.
+
+## Quick Installation
+
+### macOS
+    curl -L https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-darwin-arm64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
+
+### Linux
+    curl -L https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-linux-amd64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
+
+### Windows
+    # Download in PowerShell
+    Invoke-WebRequest -Uri https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-windows-amd64.zip -OutFile mkctx.zip
+    Expand-Archive mkctx.zip -DestinationPath .
+    # Move to a directory in your PATH
+
+## Command Help
+
+    mkctx - Context Generator for LLMs
+    
+    USAGE:
+      mkctx [OPTIONS] [DIRECTORY]
+    
+    ARGUMENTS:
+      DIRECTORY    Path to the directory to process (required unless --help or --version is specified)
+    
+    OPTIONS:
+      --include PATTERN    Include only files matching the glob pattern (can be used multiple times)
+      --exclude PATTERN    Exclude files matching the glob pattern (can be used multiple times)
+      --gitignore          Respect patterns from .gitignore file
+      --version            Show version information
+      --help               Show this help message
+    
+    EXAMPLES:
+      # Process all files in the current directory
+      mkctx .
+    
+      # Include only Go files
+      mkctx --include "*.go" /path/to/project
+
+## Sample Output
+
+Below is a sample output from running `mkctx` on a small project:
+
+    # Directory Structure
+    
+    └── project/
+        ├── main.go
+        ├── utils/
+        │   └── helpers.go
+        └── README.md
+    
+    # Source Code Files
+    
+    ## main.go
+    
+    package main
+    
+    import (
+        "fmt"
+        "./utils"
+    )
+    
+    func main() {
+        fmt.Println("Hello, world!")
+        utils.PrintHelper()
+    }
+    
+    ## utils/helpers.go
+    
+    package utils
+    
+    import "fmt"
+    
+    func PrintHelper() {
+        fmt.Println("This is a helper function")
+    }
+    
+    ## README.md
+    
+    # Sample Project
+    
+    This is a sample project to demonstrate mkctx functionality.
 
 ## Features
 
@@ -8,11 +90,32 @@
 - Extracts the content of source code files
 - Formats everything in a clean, structured way for LLMs
 - Intelligently filters files using various criteria:
-    - Include only specific file types
-    - Exclude specific files or directories
-    - Respect gitignore patterns
+  - Include only specific file types
+  - Exclude specific files or directories
+  - Respect gitignore patterns
 - Automatically excludes binary files
 - No external dependencies - just pure Go
+
+## Default Exclusions
+
+By default, `mkctx` excludes certain files and directories for security and relevance:
+
+1. **Binary files** - Files with binary content or binary extensions (images, executables, etc.)
+2. **Git internals** - The `.git` directory and its contents
+3. **Environment files** - `.env` files and files with `.env` extension are excluded by default to prevent accidental exposure of secrets and credentials
+
+To include `.env` files, you must explicitly specify them with the `--include` flag:
+
+    # Include only .env files
+    mkctx --include ".env" /path/to/project
+    
+    # Include .env files along with other files
+    mkctx --include "*.go" --include ".env" /path/to/project
+    
+    # Include all .env files in the project
+    mkctx --include "*.env" /path/to/project
+
+This protection helps prevent accidentally leaking sensitive configuration and credentials when sharing code context with LLMs.
 
 ## Open Source Status
 
@@ -22,17 +125,13 @@ This project is open source under the MIT License. While we welcome bug reports 
 
 ### From Source
 
-```bash
-git clone https://github.com/yourusername/mkctx.git
-cd mkctx
-go build -o mkctx
-```
+    git clone https://github.com/yourusername/mkctx.git
+    cd mkctx
+    go build -o mkctx
 
 Move the built binary to a location in your PATH:
 
-```bash
-mv mkctx /usr/local/bin/   # Linux/macOS
-```
+    mv mkctx /usr/local/bin/   # Linux/macOS
 
 ### Cross-platform Binaries
 
@@ -44,9 +143,7 @@ Pre-built binaries for multiple platforms are available in the releases section 
 
 At its simplest, run `mkctx` with a directory path to generate context from that directory:
 
-```bash
-mkctx /path/to/your/project > context.md
-```
+    mkctx /path/to/your/project > context.md
 
 This will generate a Markdown file with:
 1. A directory tree of your project
@@ -60,42 +157,34 @@ You can control which files are included in the output using various flags:
 
 The `--include` flag allows you to specify which files to include. Everything else will be excluded:
 
-```bash
-# Include only Go files
-mkctx --include "*.go" /path/to/your/project > context.md
-
-# Include both Go files and Markdown files
-mkctx --include "*.go" --include "*.md" /path/to/your/project > context.md
-```
+    # Include only Go files
+    mkctx --include "*.go" /path/to/your/project > context.md
+    
+    # Include both Go files and Markdown files
+    mkctx --include "*.go" --include "*.md" /path/to/your/project > context.md
 
 #### Exclude Specific Files
 
 The `--exclude` flag allows you to specify which files to exclude:
 
-```bash
-# Exclude the vendor directory
-mkctx --exclude "vendor/*" /path/to/your/project > context.md
-
-# Exclude both vendor directory and test files
-mkctx --exclude "vendor/*" --exclude "*_test.go" /path/to/your/project > context.md
-```
+    # Exclude the vendor directory
+    mkctx --exclude "vendor/*" /path/to/your/project > context.md
+    
+    # Exclude both vendor directory and test files
+    mkctx --exclude "vendor/*" --exclude "*_test.go" /path/to/your/project > context.md
 
 #### Using .gitignore Patterns
 
 The `--gitignore` flag tells `mkctx` to respect patterns from your project's `.gitignore` file:
 
-```bash
-mkctx --gitignore /path/to/your/project > context.md
-```
+    mkctx --gitignore /path/to/your/project > context.md
 
 #### Combining Filters
 
 You can combine these filters to precisely control which files are included:
 
-```bash
-# Include only Go files, exclude vendor directory, and respect gitignore
-mkctx --include "*.go" --exclude "vendor/*" --gitignore /path/to/your/project > context.md
-```
+    # Include only Go files, exclude vendor directory, and respect gitignore
+    mkctx --include "*.go" --exclude "vendor/*" --gitignore /path/to/your/project > context.md
 
 ### Filter Order
 
@@ -106,59 +195,6 @@ Filters are applied in the following order:
 3. Gitignore patterns
 
 This means that even if a file matches an include pattern, it will be excluded if it also matches an exclude pattern or a gitignore pattern.
-
-## Output Format
-
-The output is formatted in Markdown with two main sections:
-
-### Directory Structure
-
-The first section displays a tree representation of your project's directory structure:
-
-```
-# Directory Structure
-```
-└── project/
-├── cmd/
-│   └── main.go
-├── internal/
-│   ├── config/
-│   │   └── config.go
-│   └── api/
-│       └── handlers.go
-├── .gitignore
-└── README.md
-```
-
-### Source Code Files
-
-The second section contains the content of each included file, with clear headers:
-
-```
-# Source Code Files
-
-## cmd/main.go
-```go
-package main
-
-import (
-    "fmt"
-)
-
-func main() {
-    fmt.Println("Hello, world!")
-}
-```
-
-## internal/config/config.go
-```go
-package config
-
-type Config struct {
-    // Configuration fields
-}
-```
-```
 
 ## Glob Pattern Syntax
 
@@ -178,40 +214,32 @@ Both `--include` and `--exclude` flags accept glob patterns:
 
 For a small Go project, you might want to include all Go files except tests:
 
-```bash
-mkctx --include "*.go" --exclude "*_test.go" /path/to/project > context.md
-```
+    mkctx --include "*.go" --exclude "*_test.go" /path/to/project > context.md
 
 ### Large Project Example
 
 For a large project, you might want to focus on a specific component:
 
-```bash
-mkctx --include "internal/auth/*.go" --gitignore /path/to/project > context.md
-```
+    mkctx --include "internal/auth/*.go" --gitignore /path/to/project > context.md
 
 ### Multiple File Types
 
 If you're working on both code and documentation:
 
-```bash
-mkctx --include "*.go" --include "*.md" --exclude "vendor/*" /path/to/project > context.md
-```
+    mkctx --include "*.go" --include "*.md" --exclude "vendor/*" /path/to/project > context.md
 
 ## Piping to LLMs
 
 The primary use case of `mkctx` is to generate context that can be pasted into LLM chat interfaces or used with API calls:
 
-```bash
-# Generate context and send to Claude via API
-mkctx /path/to/project | curl -X POST https://api.anthropic.com/v1/messages \
-  -H "x-api-key: $ANTHROPIC_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-3-opus-20240229",
-    "messages": [{"role": "user", "content": "'"$(cat)"'"}]
-  }'
-```
+    # Generate context and send to Claude via API
+    mkctx /path/to/project | curl -X POST https://api.anthropic.com/v1/messages \
+      -H "x-api-key: $ANTHROPIC_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "model": "claude-3-opus-20240229",
+        "messages": [{"role": "user", "content": "'"$(cat)"'"}]
+      }'
 
 ## Best Practices
 

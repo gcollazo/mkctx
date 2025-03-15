@@ -85,6 +85,7 @@ func TestMatchGitignorePattern(t *testing.T) {
 }
 
 // TestShouldProcessFile tests the file filtering logic
+// TestShouldProcessFile tests the file filtering logic
 func TestShouldProcessFile(t *testing.T) {
 	tests := []struct {
 		relPath        string
@@ -115,6 +116,21 @@ func TestShouldProcessFile(t *testing.T) {
 
 		// Test with empty include (should include everything)
 		{"file.txt", []string{}, []string{}, []string{}, true},
+
+		// Test .env files (should be excluded by default)
+		{".env", []string{}, []string{}, []string{}, false},
+		{"config/.env", []string{}, []string{}, []string{}, false},
+		{"settings.env", []string{}, []string{}, []string{}, false},
+
+		// Test explicit inclusion of .env files
+		{".env", []string{".env"}, []string{}, []string{}, true},
+		{"config/.env", []string{"config/.env"}, []string{}, []string{}, true},
+		{"config/.env", []string{"*/.env"}, []string{}, []string{}, true},
+		{"settings.env", []string{"*.env"}, []string{}, []string{}, true},
+
+		// Test .env with other patterns
+		{".env", []string{"*.txt", ".env"}, []string{}, []string{}, true},
+		{".env", []string{"*.txt"}, []string{}, []string{}, false},
 	}
 
 	for _, test := range tests {

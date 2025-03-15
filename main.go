@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// Configuration holds all the script settings
+// Configuration holds all the script settings.
 type Configuration struct {
 	RootDir        string
 	IncludeGlobs   []string
@@ -20,7 +20,7 @@ type Configuration struct {
 	GitignoreGlobs []string
 }
 
-// TreeNode represents a node in the file tree
+// TreeNode represents a node in the file tree.
 type TreeNode struct {
 	Name     string
 	IsDir    bool
@@ -29,7 +29,7 @@ type TreeNode struct {
 
 // Version information
 var (
-	Version = "1.0.0" // This will be overridden during build by ldflags
+	Version = "1.0.0" // This will be overridden during build by ldflags.
 )
 
 func main() {
@@ -92,7 +92,7 @@ func main() {
 	}
 }
 
-// printHelp displays the usage and help information
+// printHelp displays the usage and help information.
 func printHelp() {
 	help := `
 mkctx - Context Generator for LLMs
@@ -287,7 +287,7 @@ func pathMatchesGlob(path, pattern string) bool {
 	return matched
 }
 
-// shouldProcessFile determines if a file should be processed based on all pattern types
+// shouldProcessFile determines if a file should be processed based on all pattern types.
 func shouldProcessFile(relPath string, includeGlobs, excludeGlobs, gitignoreGlobs []string) bool {
 	// Special handling for .gitignore file
 	if filepath.Base(relPath) == ".gitignore" {
@@ -303,6 +303,22 @@ func shouldProcessFile(relPath string, includeGlobs, excludeGlobs, gitignoreGlob
 	// Always exclude .git directory and files
 	if relPath == ".git" || strings.HasPrefix(relPath, ".git/") {
 		return false
+	}
+
+	// Check for .env files - exclude by default unless explicitly included
+	if filepath.Base(relPath) == ".env" || strings.HasSuffix(relPath, ".env") {
+		// Only include if explicitly included
+		explicitlyIncluded := false
+		for _, pattern := range includeGlobs {
+			if pattern == ".env" || pattern == "*.env" || pathMatchesGlob(relPath, pattern) {
+				explicitlyIncluded = true
+				break
+			}
+		}
+
+		if !explicitlyIncluded {
+			return false
+		}
 	}
 
 	// 1. First check includes (if specified)
