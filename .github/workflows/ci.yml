@@ -1,0 +1,296 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Allow manual triggering of releases
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a new release'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '^1.21'
+          check-latest: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Vet code
+        run: go vet ./...
+
+  build:
+    name: Build Binaries
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check_release.outputs.should_release }}
+      new_version: ${{ steps.calver.outputs.new_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if release should be created
+        id: check_release
+        run: |
+          # Release on manual trigger with create_release=true
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.create_release }}" == "true" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          # Release on push to main (not pull requests)
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate YY.MM.MICRO version
+        id: calver
+        if: steps.check_release.outputs.should_release == 'true'
+        run: |
+          # Get current year and month components
+          YY=$(date +"%y")  # Short year (last two digits)
+          MM=$(date +"%m")  # Zero-padded month
+          PREFIX="${YY}.${MM}"
+          
+          # Find latest version with the same prefix
+          git fetch --tags
+          LATEST_TAG=$(git tag -l "${PREFIX}.*" | sort -V | tail -n 1)
+          
+          if [[ -z "$LATEST_TAG" ]]; then
+            # No existing tag with this prefix, start with .1
+            NEW_VERSION="${PREFIX}.1"
+          else
+            # Extract the micro number and increment it
+            MICRO_NUMBER=$(echo $LATEST_TAG | awk -F. '{print $3}')
+            NEXT_MICRO=$((MICRO_NUMBER + 1))
+            NEW_VERSION="${PREFIX}.${NEXT_MICRO}"
+          fi
+          
+          echo "Generated new version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Go for builds
+        if: steps.check_release.outputs.should_release == 'true'
+        uses: actions/setup-go@v4
+        with:
+          go-version: '^1.21'
+          check-latest: true
+
+  release_build:
+    name: Build Release Binaries
+    needs: build
+    if: needs.build.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - goos: linux
+            goarch: amd64
+            binary_name: mkctx-linux-amd64
+            ldflags: "-s -w -extldflags '-static'"
+          - goos: linux
+            goarch: 386
+            binary_name: mkctx-linux-386
+            ldflags: "-s -w -extldflags '-static'"
+          - goos: linux
+            goarch: arm64
+            binary_name: mkctx-linux-arm64
+            ldflags: "-s -w -extldflags '-static'"
+          - goos: linux
+            goarch: arm
+            binary_name: mkctx-linux-arm
+            ldflags: "-s -w -extldflags '-static'"
+
+          # macOS (no -static flag as it's not supported on macOS)
+          - goos: darwin
+            goarch: amd64
+            binary_name: mkctx-darwin-amd64
+            ldflags: "-s -w"
+          - goos: darwin
+            goarch: arm64
+            binary_name: mkctx-darwin-arm64
+            ldflags: "-s -w"
+
+          # Windows
+          - goos: windows
+            goarch: amd64
+            binary_name: mkctx-windows-amd64.exe
+            ldflags: "-s -w -H=windowsgui"
+          - goos: windows
+            goarch: 386
+            binary_name: mkctx-windows-386.exe
+            ldflags: "-s -w -H=windowsgui"
+          - goos: windows
+            goarch: arm64
+            binary_name: mkctx-windows-arm64.exe
+            ldflags: "-s -w -H=windowsgui"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '^1.21'
+          check-latest: true
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0  # Disables CGO for truly static builds
+          VERSION: ${{ needs.build.outputs.new_version }}
+        run: |
+          # Build with optimizations and static linking
+          go build -v -trimpath -ldflags="${{ matrix.ldflags }} -X 'main.Version=$VERSION'" -o ${{ matrix.binary_name }} .
+          
+          # Use UPX for additional compression if not on macOS (UPX has issues with Apple Silicon)
+          if [[ "${{ matrix.goos }}" != "darwin" ]]; then
+            sudo apt-get update && sudo apt-get install -y upx
+            upx --best --lzma ${{ matrix.binary_name }}
+          fi
+
+      - name: Upload binary as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.binary_name }}
+          path: ${{ matrix.binary_name }}
+          retention-days: 5
+
+  release:
+    name: Create Release
+    needs: [build, release_build]
+    if: needs.build.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Git tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a ${{ needs.build.outputs.new_version }} -m "Release ${{ needs.build.outputs.new_version }}"
+          git push origin ${{ needs.build.outputs.new_version }}
+
+      - name: Download all workflow artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create release directories
+        run: |
+          mkdir -p release/linux
+          mkdir -p release/macos
+          mkdir -p release/windows
+
+      - name: Create archives for each platform
+        run: |
+          # Linux binaries
+          cp mkctx-linux-amd64/mkctx-linux-amd64 release/linux/mkctx
+          chmod +x release/linux/mkctx
+          tar -czf mkctx-${{ needs.build.outputs.new_version }}-linux-amd64.tar.gz -C release/linux .
+          
+          cp mkctx-linux-386/mkctx-linux-386 release/linux/mkctx
+          chmod +x release/linux/mkctx
+          tar -czf mkctx-${{ needs.build.outputs.new_version }}-linux-386.tar.gz -C release/linux .
+          
+          cp mkctx-linux-arm64/mkctx-linux-arm64 release/linux/mkctx
+          chmod +x release/linux/mkctx
+          tar -czf mkctx-${{ needs.build.outputs.new_version }}-linux-arm64.tar.gz -C release/linux .
+          
+          cp mkctx-linux-arm/mkctx-linux-arm release/linux/mkctx
+          chmod +x release/linux/mkctx
+          tar -czf mkctx-${{ needs.build.outputs.new_version }}-linux-arm.tar.gz -C release/linux .
+          
+          # macOS binaries
+          cp mkctx-darwin-amd64/mkctx-darwin-amd64 release/macos/mkctx
+          chmod +x release/macos/mkctx
+          tar -czf mkctx-${{ needs.build.outputs.new_version }}-darwin-amd64.tar.gz -C release/macos .
+          
+          cp mkctx-darwin-arm64/mkctx-darwin-arm64 release/macos/mkctx
+          chmod +x release/macos/mkctx
+          tar -czf mkctx-${{ needs.build.outputs.new_version }}-darwin-arm64.tar.gz -C release/macos .
+          
+          # Windows binaries
+          cp mkctx-windows-amd64.exe/mkctx-windows-amd64.exe release/windows/mkctx.exe
+          zip -j mkctx-${{ needs.build.outputs.new_version }}-windows-amd64.zip release/windows/mkctx.exe
+          
+          cp mkctx-windows-386.exe/mkctx-windows-386.exe release/windows/mkctx.exe
+          zip -j mkctx-${{ needs.build.outputs.new_version }}-windows-386.zip release/windows/mkctx.exe
+          
+          cp mkctx-windows-arm64.exe/mkctx-windows-arm64.exe release/windows/mkctx.exe
+          zip -j mkctx-${{ needs.build.outputs.new_version }}-windows-arm64.zip release/windows/mkctx.exe
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.new_version }}
+          name: mkctx ${{ needs.build.outputs.new_version }}
+          draft: false
+          prerelease: false
+          files: |
+            mkctx-${{ needs.build.outputs.new_version }}-linux-amd64.tar.gz
+            mkctx-${{ needs.build.outputs.new_version }}-linux-386.tar.gz
+            mkctx-${{ needs.build.outputs.new_version }}-linux-arm64.tar.gz
+            mkctx-${{ needs.build.outputs.new_version }}-linux-arm.tar.gz
+            mkctx-${{ needs.build.outputs.new_version }}-darwin-amd64.tar.gz
+            mkctx-${{ needs.build.outputs.new_version }}-darwin-arm64.tar.gz
+            mkctx-${{ needs.build.outputs.new_version }}-windows-amd64.zip
+            mkctx-${{ needs.build.outputs.new_version }}-windows-386.zip
+            mkctx-${{ needs.build.outputs.new_version }}-windows-arm64.zip
+          body: |
+            # mkctx ${{ needs.build.outputs.new_version }}
+            
+            ## What's New
+            
+            This release was automatically generated with version ${{ needs.build.outputs.new_version }} on $(date +'%Y-%m-%d').
+            
+            ## Installation
+            
+            ### Linux (amd64, 386, arm64, arm)
+            ```bash
+            # Download and extract
+            tar -xzf mkctx-${{ needs.build.outputs.new_version }}-linux-{arch}.tar.gz
+            # Move to a directory in your PATH
+            sudo mv mkctx /usr/local/bin/
+            ```
+            
+            ### macOS (Intel and Apple Silicon)
+            ```bash
+            # Download and extract
+            tar -xzf mkctx-${{ needs.build.outputs.new_version }}-darwin-{arch}.tar.gz
+            # Move to a directory in your PATH
+            sudo mv mkctx /usr/local/bin/
+            ```
+            
+            ### Windows
+            1. Download and extract the appropriate zip file
+            2. Move the executable to a location in your PATH
