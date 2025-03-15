@@ -27,7 +27,7 @@ type TreeNode struct {
 	Children []*TreeNode
 }
 
-// Version information
+// Version information.
 var (
 	Version = "1.0.0" // This will be overridden during build by ldflags.
 )
@@ -73,7 +73,11 @@ func main() {
 	// Output everything in Claude's format
 	fmt.Println("# Directory Structure")
 	fmt.Println("```")
-	printTree(rootNode, "", true)
+	err := printTree(rootNode, "", true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error printing directory tree: %v\n", err)
+		os.Exit(1)
+	}
 	fmt.Println("```")
 	fmt.Println()
 	fmt.Println("# Source Code Files")
@@ -109,6 +113,11 @@ func main() {
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
+		return false
+	}
+	if err != nil {
+		// If we can't access the file for some other reason,
+		// treat it as if it doesn't exist
 		return false
 	}
 	return !info.IsDir()
@@ -197,7 +206,11 @@ func parseFlags() (Configuration, bool, bool) {
 
 		// Verify the directory exists
 		fileInfo, err := os.Stat(rootDir)
-		if err != nil || !fileInfo.IsDir() {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Cannot access directory '%s': %v\n", rootDir, err)
+			os.Exit(1)
+		}
+		if !fileInfo.IsDir() {
 			fmt.Fprintf(os.Stderr, "Error: '%s' is not a valid directory\n", rootDir)
 			os.Exit(1)
 		}
@@ -219,7 +232,13 @@ func parseGitignoreFile(filePath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			// Log the error but continue execution
+			fmt.Fprintf(os.Stderr, "Warning: Failed to close gitignore file: %v\n", closeErr)
+		}
+	}()
 
 	var patterns []string
 	scanner := bufio.NewScanner(file)
@@ -452,7 +471,11 @@ func buildDirectoryTree(rootDir, currentDir string) *TreeNode {
 }
 
 // printTree prints the directory tree in a pretty format.
-func printTree(node *TreeNode, prefix string, isLast bool) {
+func printTree(node *TreeNode, prefix string, isLast bool) error {
+	if node == nil {
+		return fmt.Errorf("cannot print nil tree node")
+	}
+
 	// Print the current node
 	if node.IsDir {
 		fmt.Printf("%s%s%s/\n", prefix, getConnector(isLast), node.Name)
@@ -471,8 +494,11 @@ func printTree(node *TreeNode, prefix string, isLast bool) {
 	// Print the children
 	for i, child := range node.Children {
 		isLastChild := i == len(node.Children)-1
-		printTree(child, newPrefix, isLastChild)
+		if err := printTree(child, newPrefix, isLastChild); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // getConnector returns the appropriate connector character for the tree.
@@ -543,7 +569,11 @@ func isBinaryFile(filePath string) bool {
 	// Read first 8000 bytes
 	buffer := make([]byte, 8000)
 	n, err := file.Read(buffer)
-	if err != nil && err != io.EOF {
+	if err != nil {
+		if err == io.EOF {
+			// Empty file, not binary
+			return false
+		}
 		return true
 	}
 

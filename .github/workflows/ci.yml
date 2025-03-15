@@ -37,7 +37,7 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -race -v ./...
 
       - name: Vet code
         run: go vet ./...
@@ -143,43 +143,43 @@ jobs:
         include:
           # Linux
           - goos: linux
-            goarch: amd64
+            goarch: "amd64"
             binary_name: mkctx-linux-amd64
             ldflags: "-s -w -extldflags '-static'"
           - goos: linux
-            goarch: 386
+            goarch: "386"
             binary_name: mkctx-linux-386
             ldflags: "-s -w -extldflags '-static'"
           - goos: linux
-            goarch: arm64
+            goarch: "arm64"
             binary_name: mkctx-linux-arm64
             ldflags: "-s -w -extldflags '-static'"
           - goos: linux
-            goarch: arm
+            goarch: "arm"
             binary_name: mkctx-linux-arm
             ldflags: "-s -w -extldflags '-static'"
 
           # macOS (no -static flag as it's not supported on macOS)
           - goos: darwin
-            goarch: amd64
+            goarch: "amd64"
             binary_name: mkctx-darwin-amd64
             ldflags: "-s -w"
           - goos: darwin
-            goarch: arm64
+            goarch: "arm64"
             binary_name: mkctx-darwin-arm64
             ldflags: "-s -w"
 
           # Windows
           - goos: windows
-            goarch: amd64
+            goarch: "amd64"
             binary_name: mkctx-windows-amd64.exe
             ldflags: "-s -w -H=windowsgui"
           - goos: windows
-            goarch: 386
+            goarch: "386"
             binary_name: mkctx-windows-386.exe
             ldflags: "-s -w -H=windowsgui"
           - goos: windows
-            goarch: arm64
+            goarch: "arm64"
             binary_name: mkctx-windows-arm64.exe
             ldflags: "-s -w -H=windowsgui"
 

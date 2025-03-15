@@ -46,7 +46,7 @@ build:
 # Run tests
 .PHONY: test
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) -race -v ./...
 
 # Initialize or update Go modules
 .PHONY: deps
