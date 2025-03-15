@@ -27,9 +27,33 @@ type TreeNode struct {
 	Children []*TreeNode
 }
 
+// Version information
+var (
+	Version = "1.0.0" // This will be overridden during build by ldflags
+)
+
 func main() {
 	// Parse command line flags
-	config := parseFlags()
+	config, showVersion, showHelp := parseFlags()
+
+	// Handle version flag
+	if showVersion {
+		fmt.Printf("mkctx version %s\n", Version)
+		return
+	}
+
+	// Handle help flag
+	if showHelp {
+		printHelp()
+		return
+	}
+
+	// Ensure we have a root directory
+	if config.RootDir == "" {
+		fmt.Fprintf(os.Stderr, "Error: Root directory not specified\n")
+		fmt.Fprintf(os.Stderr, "Use --help for usage information\n")
+		os.Exit(1)
+	}
 
 	// Parse .gitignore file if needed
 	if config.UseGitignore {
@@ -68,34 +92,88 @@ func main() {
 	}
 }
 
+// printHelp displays the usage and help information
+func printHelp() {
+	help := `
+mkctx - Context Generator for LLMs
+
+USAGE:
+  mkctx [OPTIONS] [DIRECTORY]
+
+ARGUMENTS:
+  DIRECTORY    Path to the directory to process (required unless --help or --version is specified)
+
+OPTIONS:
+  --include PATTERN    Include only files matching the glob pattern (can be used multiple times)
+  --exclude PATTERN    Exclude files matching the glob pattern (can be used multiple times)
+  --gitignore          Respect patterns from .gitignore file
+  --version            Show version information
+  --help               Show this help message
+
+EXAMPLES:
+  # Process all files in the current directory
+  mkctx .
+
+  # Include only Go files
+  mkctx --include "*.go" /path/to/project
+
+  # Include Go files, exclude tests
+  mkctx --include "*.go" --exclude "*_test.go" /path/to/project
+
+  # Respect gitignore patterns
+  mkctx --gitignore /path/to/project
+
+  # Combine filters
+  mkctx --include "*.go" --exclude "vendor/*" --gitignore /path/to/project
+
+OUTPUT:
+  The output is formatted in Markdown with a directory tree and file contents,
+  suitable for pasting into LLM interfaces like Claude.
+`
+	fmt.Println(help)
+}
+
 // parseFlags parses command line arguments and returns a configuration
-func parseFlags() Configuration {
+func parseFlags() (Configuration, bool, bool) {
 	// Define flags
 	var includeGlobs multiFlag
 	var excludeGlobs multiFlag
 	var useGitignore bool
+	var showVersion bool
+	var showHelp bool
 
 	flag.Var(&includeGlobs, "include", "Glob pattern to include (can be used multiple times)")
 	flag.Var(&excludeGlobs, "exclude", "Glob pattern to exclude (can be used multiple times)")
 	flag.BoolVar(&useGitignore, "gitignore", false, "Use .gitignore file for exclusions")
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
+	flag.BoolVar(&showHelp, "help", false, "Show help message")
+
+	// Use custom usage function to show condensed help
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: mkctx [OPTIONS] [DIRECTORY]\n")
+		fmt.Fprintf(os.Stderr, "Use --help for detailed usage information\n")
+	}
 
 	// Parse flags
 	flag.Parse()
 
-	// Get the root directory (the first non-flag argument)
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Error: Root directory not specified\n")
-		os.Exit(1)
+	// Return early for version or help flags
+	if showVersion || showHelp {
+		return Configuration{}, showVersion, showHelp
 	}
 
-	rootDir := args[0]
+	// Get the root directory (the first non-flag argument)
+	args := flag.Args()
+	var rootDir string
+	if len(args) >= 1 {
+		rootDir = args[0]
 
-	// Verify the directory exists
-	fileInfo, err := os.Stat(rootDir)
-	if err != nil || !fileInfo.IsDir() {
-		fmt.Fprintf(os.Stderr, "Error: '%s' is not a valid directory\n", rootDir)
-		os.Exit(1)
+		// Verify the directory exists
+		fileInfo, err := os.Stat(rootDir)
+		if err != nil || !fileInfo.IsDir() {
+			fmt.Fprintf(os.Stderr, "Error: '%s' is not a valid directory\n", rootDir)
+			os.Exit(1)
+		}
 	}
 
 	// Return the configuration
@@ -105,7 +183,7 @@ func parseFlags() Configuration {
 		ExcludeGlobs:   excludeGlobs,
 		UseGitignore:   useGitignore,
 		GitignoreGlobs: []string{},
-	}
+	}, showVersion, showHelp
 }
 
 // parseGitignoreFile reads a .gitignore file and returns a list of patterns

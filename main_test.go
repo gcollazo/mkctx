@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -728,5 +731,94 @@ func captureTreeOutputRecursive(node *TreeNode, prefix string, isLast bool, sb *
 	for i, child := range node.Children {
 		isLastChild := i == len(node.Children)-1
 		captureTreeOutputRecursive(child, newPrefix, isLastChild, sb)
+	}
+}
+
+// TestVersionFlag tests the --version flag functionality
+// TestVersionFlag tests the --version flag functionality
+func TestVersionFlag(t *testing.T) {
+	// Save original os.Args
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	// Save original stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
+
+	// Set Version for test
+	originalVersion := Version
+	Version = "1.2.3"
+	defer func() { Version = originalVersion }()
+
+	// Mock args
+	os.Args = []string{"mkctx", "--version"}
+
+	// Call with args that would make parseFlags return showVersion=true
+	_, showVersion, _ := parseFlags()
+	if !showVersion {
+		t.Errorf("Expected showVersion to be true, got false")
+	}
+
+	// Run a simulation of what main() would do with showVersion=true
+	if showVersion {
+		fmt.Printf("mkctx version %s\n", Version)
+	}
+
+	// Close the writer to get the output
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Check output
+	if !strings.Contains(output, "mkctx version 1.2.3") {
+		t.Errorf("Expected version output, got %q", output)
+	}
+}
+
+// TestHelpFlag tests the --help flag functionality
+// TestHelpFlag tests the --help flag functionality
+func TestHelpFlag(t *testing.T) {
+	// Save original os.Args
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	// Save original stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
+
+	// Instead of calling parseFlags() which would redefine flags,
+	// simply simulate the behavior for --help
+
+	// Mock help behavior directly
+	printHelp()
+
+	// Close the writer to get the output
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// Check output
+	expectedContent := []string{
+		"mkctx - Context Generator for LLMs",
+		"USAGE:",
+		"OPTIONS:",
+		"--include",
+		"--exclude",
+		"--gitignore",
+		"--version",
+		"--help",
+		"EXAMPLES:",
+	}
+
+	for _, content := range expectedContent {
+		if !strings.Contains(output, content) {
+			t.Errorf("Expected help output to contain %q, but it doesn't", content)
+		}
 	}
 }
