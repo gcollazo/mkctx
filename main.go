@@ -105,7 +105,7 @@ func main() {
 	}
 }
 
-// fileExists checks if a file exists and is not a directory
+// fileExists checks if a file exists and is not a directory.
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -288,7 +288,7 @@ func matchGitignorePattern(pattern, path string) bool {
 	return err == nil && matched
 }
 
-// pathMatchesGlob checks if a path matches a glob pattern
+// pathMatchesGlob checks if a path matches a glob pattern.
 func pathMatchesGlob(path, pattern string) bool {
 	// Handle directory glob patterns (ending with /*)
 	if strings.HasSuffix(pattern, "/*") {
@@ -385,7 +385,7 @@ func shouldProcessFile(relPath string, includeGlobs, excludeGlobs, gitignoreGlob
 	return true
 }
 
-// includePatterns checks if specific patterns are included in the pattern list
+// includePatterns checks if specific patterns are included in the pattern list.
 func includePatterns(patterns []string, requiredPatterns ...string) bool {
 	patternMap := make(map[string]bool)
 	for _, p := range patterns {
@@ -401,7 +401,7 @@ func includePatterns(patterns []string, requiredPatterns ...string) bool {
 	return true
 }
 
-// buildDirectoryTree builds a tree representation of the directory structure
+// buildDirectoryTree builds a tree representation of the directory structure.
 func buildDirectoryTree(rootDir, currentDir string) *TreeNode {
 	baseName := filepath.Base(currentDir)
 	node := &TreeNode{
@@ -451,7 +451,7 @@ func buildDirectoryTree(rootDir, currentDir string) *TreeNode {
 	return node
 }
 
-// printTree prints the directory tree in a pretty format
+// printTree prints the directory tree in a pretty format.
 func printTree(node *TreeNode, prefix string, isLast bool) {
 	// Print the current node
 	if node.IsDir {
@@ -475,7 +475,7 @@ func printTree(node *TreeNode, prefix string, isLast bool) {
 	}
 }
 
-// getConnector returns the appropriate connector character for the tree
+// getConnector returns the appropriate connector character for the tree.
 func getConnector(isLast bool) string {
 	if isLast {
 		return "└── "
@@ -483,7 +483,7 @@ func getConnector(isLast bool) string {
 	return "├── "
 }
 
-// collectFiles gathers all files that should be included in the output
+// collectFiles gathers all files that should be included in the output.
 func collectFiles(config Configuration) []string {
 	var filesToProcess []string
 
@@ -516,7 +516,7 @@ func collectFiles(config Configuration) []string {
 	return filesToProcess
 }
 
-// isBinaryFile checks if a file is binary
+// isBinaryFile checks if a file is binary.
 func isBinaryFile(filePath string) bool {
 	// Check file extension first
 	ext := strings.ToLower(filepath.Ext(filePath))
@@ -557,7 +557,7 @@ func isBinaryFile(filePath string) bool {
 	return false
 }
 
-// readFileContent reads the content of a file as a string
+// readFileContent reads the content of a file as a string.
 func readFileContent(filePath string) (string, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {

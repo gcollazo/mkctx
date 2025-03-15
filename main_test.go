@@ -84,7 +84,7 @@ func TestMatchGitignorePattern(t *testing.T) {
 	}
 }
 
-// TestShouldProcessFile tests the file filtering logic
+// TestShouldProcessFile tests the file filtering logic.
 // TestShouldProcessFile tests the file filtering logic
 func TestShouldProcessFile(t *testing.T) {
 	tests := []struct {
@@ -142,7 +142,7 @@ func TestShouldProcessFile(t *testing.T) {
 	}
 }
 
-// TestIsBinaryFile tests the binary file detection
+// TestIsBinaryFile tests the binary file detection.
 func TestIsBinaryFile(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := os.TempDir()
@@ -187,7 +187,7 @@ func TestIsBinaryFile(t *testing.T) {
 	}
 }
 
-// TestParseGitignoreFile tests the gitignore file parsing
+// TestParseGitignoreFile tests the gitignore file parsing.
 func TestParseGitignoreFile(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := os.TempDir()
@@ -232,7 +232,7 @@ node_modules/
 	}
 }
 
-// TestBuildDirectoryTree tests the tree building functionality
+// TestBuildDirectoryTree tests the tree building functionality.
 func TestBuildDirectoryTree(t *testing.T) {
 	// Create a temporary directory structure for testing
 	tempDir := os.TempDir()
@@ -299,7 +299,7 @@ func TestBuildDirectoryTree(t *testing.T) {
 	}
 }
 
-// TestCollectFiles tests the file collection functionality
+// TestCollectFiles tests the file collection functionality.
 func TestCollectFiles(t *testing.T) {
 	// Create a temporary directory structure for testing
 	tempDir := os.TempDir()
@@ -475,7 +475,7 @@ func TestCollectFiles(t *testing.T) {
 	}
 }
 
-// TestMultiFlagImplementation tests the custom flag implementation
+// TestMultiFlagImplementation tests the custom flag implementation.
 func TestMultiFlagImplementation(t *testing.T) {
 	var f multiFlag
 
@@ -502,7 +502,7 @@ func TestMultiFlagImplementation(t *testing.T) {
 	}
 }
 
-// Integration tests for the entire workflow, using a sample directory
+// Integration tests for the entire workflow, using a sample directory.
 func TestIntegrationFullWorkflow(t *testing.T) {
 	// Create a sample project structure
 	tempDir := os.TempDir()
@@ -715,7 +715,7 @@ func TestIntegrationFullWorkflow(t *testing.T) {
 	}
 }
 
-// Helper function to capture tree output as a string
+// Helper function to capture tree output as a string.
 func captureTreeOutput(node *TreeNode) string {
 	var sb strings.Builder
 	captureTreeOutputRecursive(node, "", true, &sb)
@@ -750,7 +750,7 @@ func captureTreeOutputRecursive(node *TreeNode, prefix string, isLast bool, sb *
 	}
 }
 
-// TestVersionFlag tests the --version flag functionality
+// TestVersionFlag tests the --version flag functionality.
 // TestVersionFlag tests the --version flag functionality
 func TestVersionFlag(t *testing.T) {
 	// Save original os.Args
@@ -794,7 +794,7 @@ func TestVersionFlag(t *testing.T) {
 	}
 }
 
-// TestHelpFlag tests the --help flag functionality
+// TestHelpFlag tests the --help flag functionality.
 // TestHelpFlag tests the --help flag functionality
 func TestHelpFlag(t *testing.T) {
 	// Save original os.Args
@@ -839,7 +839,7 @@ func TestHelpFlag(t *testing.T) {
 	}
 }
 
-// TestMkctxFile tests the functionality related to the .mkctx file
+// TestMkctxFile tests the functionality related to the .mkctx file.
 func TestMkctxFile(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := os.TempDir()
@@ -967,7 +967,7 @@ func TestMkctxFile(t *testing.T) {
 	}
 }
 
-// Helper function to create a string pointer
+// Helper function to create a string pointer.
 func stringPtr(s string) *string {
 	return &s
 }
