@@ -111,6 +111,22 @@ jobs:
 
       - name: Upload development binary as artifact
         if: steps.check_release.outputs.should_release != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mkctx-dev-build
+          path: mkctx
+          retention-days: 5
+
+      - name: Build development binary (with version)
+        if: steps.check_release.outputs.should_release != 'true'
+        run: |
+          # Build with dev version (YY.MM.0-dev)
+          DEV_VERSION="$(date +"%y.%m.0-dev")"
+          echo "Building development version: $DEV_VERSION"
+          go build -v -trimpath -ldflags="-s -w -X 'main.Version=$DEV_VERSION'" -o mkctx .
+
+      - name: Upload development binary as artifact
+        if: steps.check_release.outputs.should_release != 'true'
         uses: actions/upload-artifact@v3
         with:
           name: mkctx-dev-build
@@ -194,7 +210,7 @@ jobs:
           fi
 
       - name: Upload binary as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.binary_name }}
           path: ${{ matrix.binary_name }}
@@ -219,7 +235,7 @@ jobs:
           git push origin ${{ needs.build.outputs.new_version }}
 
       - name: Download all workflow artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Create release directories
         run: |
