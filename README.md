@@ -5,9 +5,13 @@
 `mkctx` is a lightweight CLI tool that prepares your code for AI interactions by creating a formatted directory tree and
 extracting file contents in a clean, structured format.
 
+## ✨ Vibe Coding Certified™ 🧙‍♂️💻
 
-> ✨ Vibe Coding Certified™ 🧙‍♂️💻
-
+This project was developed through "vibe coding" - a programming approach where the entire
+codebase was generated using AI language models with minimal or no manual coding. Following the essence of vibe coding, the
+code was accepted and implemented without full technical understanding of every component. Users should be aware of
+this AI-dependent development methodology when deciding to use or recommend this software, as it may exhibit limitations
+in edge cases or require different debugging approaches than traditionally coded software.
 
 ## Installation
 
