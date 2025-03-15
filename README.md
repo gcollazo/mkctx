@@ -83,6 +83,13 @@ Below is a sample output from running `mkctx` on a small project:
     # Sample Project
     
     This is a sample project to demonstrate mkctx functionality.
+    
+    # USER INSTRUCTIONS
+    
+    ```
+    You are a software engineer reviewing this code. Please suggest improvements
+    and identify any potential bugs or security issues.
+    ```
 
 ## Features
 
@@ -95,6 +102,30 @@ Below is a sample output from running `mkctx` on a small project:
   - Respect gitignore patterns
 - Automatically excludes binary files
 - No external dependencies - just pure Go
+- Supports custom LLM instructions via the `.mkctx` file
+
+## The .mkctx File
+
+The `.mkctx` file is a special file that can be placed in the root of your project directory. This file contains instructions or context for the LLM to follow when analyzing your code. When `mkctx` finds this file, it appends its contents to the output as a special section titled "LLM Instructions".
+
+This is particularly useful for:
+
+1. **Providing consistent instructions** across multiple LLM sessions about the same codebase
+2. **Setting expectations** for what kind of analysis or feedback you want
+3. **Giving context** about the project's purpose, constraints, or requirements
+4. **Specifying a persona or role** for the LLM to adopt when analyzing the code
+
+### Example .mkctx File
+
+```
+You are a security consultant reviewing this codebase. Focus on:
+1. Potential vulnerabilities in file parsing
+2. Input validation issues
+3. Unsafe operations
+4. Suggestions for hardening this utility
+
+Provide specific code examples for any improvements you recommend.
+```
 
 ## Default Exclusions
 
@@ -103,6 +134,7 @@ By default, `mkctx` excludes certain files and directories for security and rele
 1. **Binary files** - Files with binary content or binary extensions (images, executables, etc.)
 2. **Git internals** - The `.git` directory and its contents
 3. **Environment files** - `.env` files and files with `.env` extension are excluded by default to prevent accidental exposure of secrets and credentials
+4. **The .mkctx file itself** - This file is processed separately and appended to the output as instructions rather than included in the regular file listing
 
 To include `.env` files, you must explicitly specify them with the `--include` flag:
 
@@ -148,6 +180,7 @@ At its simplest, run `mkctx` with a directory path to generate context from that
 This will generate a Markdown file with:
 1. A directory tree of your project
 2. The content of all non-binary files
+3. Any instructions from the `.mkctx` file (if it exists)
 
 ### Filtering Files
 
@@ -253,6 +286,8 @@ The primary use case of `mkctx` is to generate context that can be pasted into L
 
 5. **Use --gitignore Flag**: Most repositories have sensible `.gitignore` files that exclude irrelevant directories like `node_modules` or `build` folders.
 
+6. **Create a .mkctx File**: For projects you frequently analyze with LLMs, create a `.mkctx` file with standard instructions to maintain consistency.
+
 ## Troubleshooting
 
 ### Files Missing from Output
@@ -282,10 +317,3 @@ We welcome bug reports through the GitHub issue tracker. When submitting a bug r
 
 1. The version of `mkctx` you're using
 2. Your operating system
-3. A minimal reproducible example
-4. Expected vs. actual behavior
-5. Any error messages you received
-
-## License
-
-This project is licensed under the MIT License.

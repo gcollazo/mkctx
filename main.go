@@ -90,6 +90,28 @@ func main() {
 		}
 		fmt.Printf("```\n\n")
 	}
+
+	// Check if .mkctx file exists and append its contents
+	mkctxPath := filepath.Join(config.RootDir, ".mkctx")
+	if fileExists(mkctxPath) {
+		mkctxContent, err := readFileContent(mkctxPath)
+		if err == nil && len(strings.TrimSpace(mkctxContent)) > 0 {
+			fmt.Println("# USER INSTRUCTIONS")
+			fmt.Println()
+			fmt.Println("```")
+			fmt.Print(mkctxContent)
+			fmt.Println("```")
+		}
+	}
+}
+
+// fileExists checks if a file exists and is not a directory
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
 
 // printHelp displays the usage and help information.
@@ -125,6 +147,11 @@ EXAMPLES:
 
   # Combine filters
   mkctx --include "*.go" --exclude "vendor/*" --gitignore /path/to/project
+
+SPECIAL FILES:
+  .mkctx             If this file exists in the root directory, its contents will be appended
+                     to the output as instructions for the LLM. This helps provide context
+                     and specific directions to the model.
 
 OUTPUT:
   The output is formatted in Markdown with a directory tree and file contents,
@@ -297,6 +324,12 @@ func shouldProcessFile(relPath string, includeGlobs, excludeGlobs, gitignoreGlob
 			len(gitignoreGlobs) > 0 {
 			return true
 		}
+		return false
+	}
+
+	// Special handling for .mkctx file - always exclude it from normal file processing
+	// It will be handled separately in the main function
+	if filepath.Base(relPath) == ".mkctx" {
 		return false
 	}
 

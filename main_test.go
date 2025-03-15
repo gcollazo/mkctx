@@ -838,3 +838,136 @@ func TestHelpFlag(t *testing.T) {
 		}
 	}
 }
+
+// TestMkctxFile tests the functionality related to the .mkctx file
+func TestMkctxFile(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir := os.TempDir()
+	projectDir := filepath.Join(tempDir, "mkctx_test_project")
+	err := os.MkdirAll(projectDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(projectDir)
+
+	// Create a simple source file
+	srcFile := filepath.Join(projectDir, "main.go")
+	err = os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create source file: %v", err)
+	}
+
+	// Test cases for different .mkctx file scenarios
+	tests := []struct {
+		name             string
+		mkctxContent     *string // nil means no file, empty string means empty file
+		expectedOutput   string
+		unexpectedOutput string
+	}{
+		{
+			name:             "No .mkctx file",
+			mkctxContent:     nil,
+			unexpectedOutput: "USER INSTRUCTIONS",
+		},
+		{
+			name:             "Empty .mkctx file",
+			mkctxContent:     new(string),
+			unexpectedOutput: "USER INSTRUCTIONS",
+		},
+		{
+			name:           "With .mkctx content",
+			mkctxContent:   stringPtr("You are a code reviewer. Please review this code."),
+			expectedOutput: "You are a code reviewer. Please review this code.",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Setup .mkctx file based on test case
+			mkctxPath := filepath.Join(projectDir, ".mkctx")
+			if test.mkctxContent != nil {
+				err = os.WriteFile(mkctxPath, []byte(*test.mkctxContent), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create .mkctx file: %v", err)
+				}
+			} else {
+				// Ensure no .mkctx file exists
+				os.Remove(mkctxPath)
+			}
+
+			// Capture stdout to verify output
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// Run the program with the test configuration
+			config := Configuration{
+				RootDir:      projectDir,
+				IncludeGlobs: []string{},
+				ExcludeGlobs: []string{},
+				UseGitignore: false,
+			}
+
+			// Generate the directory tree
+			rootNode := buildDirectoryTree(config.RootDir, config.RootDir)
+
+			// Generate the content for files to include
+			filesToProcess := collectFiles(config)
+
+			// Output everything in Claude's format
+			fmt.Println("# Directory Structure")
+			fmt.Println("```")
+			printTree(rootNode, "", true)
+			fmt.Println("```")
+			fmt.Println()
+			fmt.Println("# Source Code Files")
+			fmt.Println()
+
+			for _, filePath := range filesToProcess {
+				relPath, _ := filepath.Rel(config.RootDir, filePath)
+				content, err := readFileContent(filePath)
+				fmt.Printf("## %s\n```\n", relPath)
+				if err != nil {
+					fmt.Printf("Error reading file: %s\n", err)
+				} else {
+					fmt.Print(content)
+				}
+				fmt.Printf("```\n\n")
+			}
+
+			// Check if .mkctx file exists and append its contents
+			if fileExists(mkctxPath) {
+				mkctxContent, err := readFileContent(mkctxPath)
+				if err == nil && len(strings.TrimSpace(mkctxContent)) > 0 {
+					fmt.Println("# USER INSTRUCTIONS")
+					fmt.Println()
+					fmt.Println("```")
+					fmt.Print(mkctxContent)
+					fmt.Println("```")
+				}
+			}
+
+			// Restore stdout and get the captured output
+			w.Close()
+			os.Stdout = oldStdout
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+			output := buf.String()
+
+			// Verify output contains expected content
+			if test.expectedOutput != "" && !strings.Contains(output, test.expectedOutput) {
+				t.Errorf("Expected output to contain %q, but it doesn't", test.expectedOutput)
+			}
+
+			// Verify output doesn't contain unexpected content
+			if test.unexpectedOutput != "" && strings.Contains(output, test.unexpectedOutput) {
+				t.Errorf("Output should not contain %q, but it does", test.unexpectedOutput)
+			}
+		})
+	}
+}
+
+// Helper function to create a string pointer
+func stringPtr(s string) *string {
+	return &s
+}
