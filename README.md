@@ -9,20 +9,22 @@ extracting file contents in a clean, structured format.
 > ✨ Vibe Coding Certified™ 🧙‍♂️💻
 
 
-## Quick Install
+## Installation
+
+Visit the [releases page](https://github.com/gcollazo/mkctx/releases) to download the latest version for your platform.
 
 ```bash
-# macOS (Apple Silicon)
-curl -L https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-darwin-arm64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
+# macOS (Apple Silicon) - replace X.Y.Z with the latest version
+curl -L https://github.com/gcollazo/mkctx/releases/download/X.Y.Z/mkctx-X.Y.Z-darwin-arm64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
 
-# macOS (Intel)
-curl -L https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-darwin-amd64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
+# macOS (Intel) - replace X.Y.Z with the latest version
+curl -L https://github.com/gcollazo/mkctx/releases/download/X.Y.Z/mkctx-X.Y.Z-darwin-amd64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
 
-# Linux
-curl -L https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-linux-amd64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
+# Linux - replace X.Y.Z with the latest version
+curl -L https://github.com/gcollazo/mkctx/releases/download/X.Y.Z/mkctx-X.Y.Z-linux-amd64.tar.gz | tar xz && sudo mv mkctx /usr/local/bin/
 
-# Windows (PowerShell)
-Invoke-WebRequest -Uri https://github.com/gcollazo/mkctx/releases/download/25.03.1/mkctx-25.03.1-windows-amd64.zip -OutFile mkctx.zip
+# Windows (PowerShell) - replace X.Y.Z with the latest version
+Invoke-WebRequest -Uri https://github.com/gcollazo/mkctx/releases/download/X.Y.Z/mkctx-X.Y.Z-windows-amd64.zip -OutFile mkctx.zip
 Expand-Archive mkctx.zip -DestinationPath .
 # Move mkctx.exe to a directory in your PATH
 ```
