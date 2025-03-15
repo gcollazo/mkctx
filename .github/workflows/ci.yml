@@ -204,7 +204,8 @@ jobs:
           go build -v -trimpath -ldflags="${{ matrix.ldflags }} -X 'main.Version=$VERSION'" -o ${{ matrix.binary_name }} .
           
           # Use UPX for additional compression if not on macOS (UPX has issues with Apple Silicon)
-          if [[ "${{ matrix.goos }}" != "darwin" ]]; then
+          # Also skip UPX on Windows ARM64 which is not yet supported
+          if [[ "${{ matrix.goos }}" != "darwin" && !("${{ matrix.goos }}" == "windows" && "${{ matrix.goarch }}" == "arm64") ]]; then
             sudo apt-get update && sudo apt-get install -y upx
             upx --best --lzma ${{ matrix.binary_name }}
           fi
